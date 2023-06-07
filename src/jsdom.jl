@@ -1,6 +1,6 @@
-# module DOM
+processdomcall( domcall::Symbol, cargs... ) =
+  haskey( DOM_CALLS, domcall ) ? DOM_CALLS[domcall](cargs...) : processfcall( Symbol("@DOM"), domcall, cargs... )
 
-# import Julia2JavaScript.processexpr
 
 function getElement( source, elid, idtype::StrSymb, getall::Bool=false )
   fcall = string( "querySelector", getall ? "All" : "" ) |> Symbol
@@ -10,10 +10,10 @@ function getElement( source, elid, idtype::StrSymb, getall::Bool=false )
   :( $source.$fcall($elid) ) |> processexpr
 end
 
+getElement( source, elid::QuoteNode, idtype::StrSymb, getall::Bool=false ) =
+  getElement( source, elid.value, idtype, getall )
 getElement( elid, idtype::StrSymb, getall::Bool=false ) = getElement( :document, elid, idtype, getall )
-
 getElement( source, elid, getall::Bool=false ) = getElement( source, elid, :css, getall )
-
 getElement( elid, getall::Bool=false ) = getElement( :document, elid, :css, getall )
 
 

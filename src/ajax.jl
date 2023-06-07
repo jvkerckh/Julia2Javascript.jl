@@ -1,3 +1,6 @@
+processajaxcall( ajaxcall::Symbol, cargs... ) =
+  haskey( AJAX_CALLS, ajaxcall) ? AJAX_CALLS[ajaxcall](cargs...) : processfcall( Symbol("@AJAX"), ajaxcall, cargs... )
+
 ajaxrequest() = :(XMLHttpRequest()) |> processexpr
 
 

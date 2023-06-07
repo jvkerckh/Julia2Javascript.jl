@@ -8,8 +8,8 @@ include("ajax.jl")
 
 export @jscript
 
-macro jscript( expr )
-  expstr = processexpr( expr, true )
+macro jscript( expr, isterm::Bool=true )
+  expstr = processexpr( expr, isterm )
   
   # For code blocks
   if expstr isa Vector && @inbounds expstr[1] == "{" && @inbounds expstr[end] == "}"
@@ -18,6 +18,7 @@ macro jscript( expr )
 
   expstr isa Vector ? join( expstr, '\n') : expstr
 end
+
 
 ts(isterm::Bool) = isterm ? ';' : ""
 
@@ -44,7 +45,8 @@ processexpr( vname::QuoteNode, isterm::Bool=false ) = processexpr( vname.value, 
 function processexpr( expr, isterm::Bool=false )
   expstr = procexpr(expr)
   expstr isa Nothing && return
-  expr.head ∈ [:block, :function, :if, :elseif, :for] && (isterm = false)
+  @inbounds expstr[end] == "}" && (isterm = false)
+  # expr.head ∈ [:block, :function, :if, :elseif, :for] && (isterm = false)
 
   isterm || return expstr
   expstr isa String && return string( expstr, ';' )
@@ -138,7 +140,7 @@ function processpair( first::AbstractString, second )
 end
 
 
-processpair( first::QuoteNode, second ) =
+processpair( first::Union{QuoteNode, Symbol}, second ) =
   processpair( first.value |> string, second )
 
 
@@ -531,12 +533,5 @@ end
 processrange( sval::Number, eval::Number ) = processrange( sval, 1, eval )
 processrange( sval, step, eval ) = processfcall( :(:), sval, step, eval )
 processrange( sval, eval ) = processfcall( :(:), sval, eval )
-
-
-processdomcall( domcall::Symbol, cargs... ) =
-  haskey( DOM_CALLS, domcall ) ? DOM_CALLS[domcall](cargs...) : processfcall( Symbol("@DOM"), domcall, cargs... )
-processajaxcall( ajaxcall::Symbol, cargs... ) =
-  haskey( AJAX_CALLS, ajaxcall) ? AJAX_CALLS[ajaxcall](cargs...) : processfcall( Symbol("@AJAX"), ajaxcall, cargs... )
-
 
 end

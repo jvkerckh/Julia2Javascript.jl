@@ -245,11 +245,11 @@ begin
 end
 
 begin
-  println( """element = @DOM getElement "intro" id becomes """, @jscript element = @DOM getElement intro id )
-  println( """x = @DOM getElement "main" id becomes """, @jscript x = @DOM getElement main id )
-  println( """y = @DOM getElement x "p" tag true becomes """, @jscript y = @DOM getElement x p tag true )
-  println( """x = @DOM getElement "intro" class true becomes """, @jscript x = @DOM getElement intro class true )
-  println( """x = @DOM getElement x "p.intro" true becomes """, @jscript x = @DOM getElement x p.intro true )
+  println( "element = @DOM getElement intro id becomes ", @jscript element = @DOM getElement intro id )
+  println( "x = @DOM getElement main id becomes ", @jscript x = @DOM getElement main id )
+  println( "y = @DOM getElement x p tag true becomes ", @jscript y = @DOM getElement x p tag true )
+  println( "x = @DOM getElement intro class true becomes ", @jscript x = @DOM getElement intro class true )
+  println( "x = @DOM getElement x p.intro true becomes ", @jscript x = @DOM getElement x p.intro true )
 
   println( """@DOM changeHTML (@DOM getElement p1 id) "New text!" true becomes """, @jscript @DOM changeHTML (@DOM getElement p1 id) "New text!" true )
   println( """@DOM changeHTML element "New Heading" true becomes """, @jscript @DOM changeHTML element "New Heading" true )
@@ -357,6 +357,4 @@ begin
 
   println( "@AJAX abortRequest xhttp becomes ", @jscript @AJAX abortRequest xhttp )
 end
-
-
 
