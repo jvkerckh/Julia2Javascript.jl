@@ -288,8 +288,13 @@ end
 processreturn( expr ) = string( "return ", processexpr(expr) )
 
 
-processpoint( vname, comp ) =
-  string( processexpr(vname), '.', processexpr(comp) )
+function processpoint( vname, comp )
+  vexpr = processexpr(vname)
+  cexpr = processexpr(comp)
+  vexpr isa String && return string( vexpr, '.', cexpr )
+  @inbounds vexpr[end] = string( vexpr[end], '.', cexpr )
+  vexpr
+end
 
 
 processref( vname, ind::Integer ) =
@@ -305,7 +310,13 @@ end
 function processfcall( fname, args... )
   fstr = processexpr(fname)
   fargstr = processexpr.(args |> collect)
-  all( isa.( fargstr, AbstractString) ) && return string( fstr, '(', join( fargstr, ", " ), ')' )
+
+  if all( isa.( fargstr, AbstractString) )
+    fargstr = string( '(', join( fargstr, ", " ), ')' )
+    fstr isa String && return string( fstr, fargstr )
+    @inbounds fstr[end] = string( fstr[end], fargstr )
+    return fstr
+  end
 
   for (ii, val) in enumerate(fargstr)
     if fargstr[ii] isa AbstractString
@@ -317,7 +328,9 @@ function processfcall( fname, args... )
 
   fargstr = string.( "  ", vcat(fargstr...) )
   @inbounds fargstr[end] = fargstr[end][1:end-1]
-  vcat( string( fstr, '(' ), fargstr, ')' )
+  fstr isa String && return vcat( string( fstr, '(' ), fargstr, ')' )
+  @inbounds fstr[end] = string( fstr[end], '(' )
+  vcat( fstr, fargstr, ')' )
 end
 
 
