@@ -12,7 +12,7 @@ macro jscript( expr, isterm::Bool=true )
   expstr = processexpr( expr, isterm )
   
   # For code blocks
-  if expstr isa Vector && @inbounds expstr[1] == "{" && @inbounds expstr[end] == "}"
+  if expr isa Expr && expr.head === :block && expstr isa Vector && @inbounds expstr[1] == "{" && @inbounds expstr[end] == "}"
     expstr = map( str -> (@inbounds str[3:end]), @inbounds expstr[2:end-1] )
   end
 
@@ -139,9 +139,8 @@ function processpair( first::AbstractString, second )
   secstr
 end
 
-
-processpair( first::Union{QuoteNode, Symbol}, second ) =
-  processpair( first.value |> string, second )
+processpair( first::QuoteNode, second ) = processpair( first.value, second )
+processpair( first::Symbol, second ) = processpair( first |> string, second )
 
 
 function processassign( aop::Symbol, vname, expr )
