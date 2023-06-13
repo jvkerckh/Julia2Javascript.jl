@@ -37,7 +37,6 @@ processexpr( ::Irrational{:ℯ}, isterm::Bool=false ) =
 processexpr( ::Nothing, isterm::Bool=false ) = string( "null", isterm |> ts )
 processexpr( ::Missing, isterm::Bool=false ) =
   string( "undefined", isterm |> ts )
-processexpr( ::Nothing, isterm::Bool=false ) = string( "null", isterm |> ts )
 processexpr( vname::Symbol, isterm::Bool=false ) = string( vname, isterm |> ts )
 processexpr( vname::QuoteNode, isterm::Bool=false ) = processexpr( vname.value, isterm )
 

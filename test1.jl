@@ -255,7 +255,7 @@ begin
   println( """@DOM changeHTML element "New Heading" true becomes """, @jscript @DOM changeHTML element "New Heading" true )
   println( """@DOM changeAttribute (@DOM getElement myImage id) src "landscape.jpg" becomes """, @jscript @DOM changeAttribute (@DOM getElement myImage id) src "landscape.jpg" )
   println( """@jscript @DOM changeHTML (@DOM getElement demo id) string( "Date : ", Date() ) becomes """, @jscript @DOM changeHTML (@DOM getElement demo id) string( "Date : ", Date() ) )
-  
+
   println( "@DOM getStyle x color becomes ", @jscript @DOM getStyle x color )
   println( """@DOM setStyle (@DOM getElement p2 id) color "blue" becomes """, @jscript @DOM setStyle (@DOM getElement p2 id) color "blue" )
   println( """@DOM setStyle (@DOM getElement id1 id) color "red" becomes """, @jscript @DOM setStyle (@DOM getElement id1 id) color "red" )

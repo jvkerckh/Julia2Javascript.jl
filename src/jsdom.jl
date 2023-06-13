@@ -86,7 +86,7 @@ insertBefore( source, child ) = appendChild( source, child )
 removeChild( source, child ) = :( $source.removeChild($child) ) |> processexpr
 
 replaceChild( source, newchild, oldchild ) =
-  :( $source.replaceChild($newchild, $oldchild) )
+  :( $source.replaceChild($newchild, $oldchild) ) |> processexpr
 
 
 DOM_CALLS = Dict(
