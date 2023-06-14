@@ -118,10 +118,13 @@ function processcall( fcall, fargs::Vector )
 end
 
 
-function processoutput( outtype::QuoteNode, args... )
-  haskey( OUTPUTS, outtype.value ) || error( ArgumentError( "Output type must be one of :console, :alert, :document, :doc" ) )
-  string( OUTPUTS[outtype.value], '(', join( processexpr.(args), ", " ), ')' )
+function processoutput( outtype::Symbol, args... )
+  haskey( OUTPUTS, outtype ) || error( ArgumentError( "Output type must be one of :console, :alert, :document, :doc" ) )
+  string( OUTPUTS[outtype], '(', join( processexpr.(args), ", " ), ')' )
 end
+
+processoutput( outtype::QuoteNode, args... ) =
+  processoutput( outtype.value, args... )
 
 
 function processdict( entries::Vector )
