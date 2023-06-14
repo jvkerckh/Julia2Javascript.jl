@@ -85,6 +85,7 @@ end
 function processcall( fcall, fargs::Vector )
   filter!( arg -> !(arg isa LineNumberNode), fargs )
   
+  fcall === Symbol("@output") && return processoutput(fargs...)
   fcall === Symbol("@new") && return processnew(fargs...)
   fcall ∈ [Symbol("@var"), Symbol("@let"), Symbol("@const")] && return processdec( fcall, fargs... )
   fcall === Symbol("@template") && return processtemplate(fargs...)
@@ -193,6 +194,12 @@ end
 function processinc( incsym::Symbol, vname::Symbol, preinc::Bool=false )
   incstr = incsym === :inc ? "++" : "--"
   preinc ? "$incstr$vname" : "$vname$incstr"
+end
+
+function processinc( incsym::Symbol, vexpr::Expr, preinc::Bool=false )
+  incstr = incsym === :inc ? "++" : "--"
+  vexpstr = processexpr(vexpr)
+  preinc ? "$incstr($vexpstr)" : "($vexpstr)$incstr"
 end
 
 
