@@ -28,6 +28,7 @@ processexpr( num::Unsigned, isterm::Bool=false ) =
   string( "0x", string( num, base=16 ) |> uppercase, isterm |> ts )
 processexpr( str::AbstractString, isterm::Bool=false ) =
   string( "'", str, "'", isterm |> ts )
+processexpr( chr::Char, isterm::Bool=false ) = processexpr( chr |> str, isterm )
 processexpr( num::BigInt, isterm::Bool=false ) =
   string( num, 'n', isterm |> ts )
 processexpr( ::Irrational{:π}, isterm::Bool=false ) =
@@ -37,7 +38,13 @@ processexpr( ::Irrational{:ℯ}, isterm::Bool=false ) =
 processexpr( ::Nothing, isterm::Bool=false ) = string( "null", isterm |> ts )
 processexpr( ::Missing, isterm::Bool=false ) =
   string( "undefined", isterm |> ts )
-processexpr( vname::Symbol, isterm::Bool=false ) = string( vname, isterm |> ts )
+
+function processexpr( vname::Symbol, isterm::Bool=false )
+  vname === :nothing && return processexpr( nothing, isterm )
+  vname === :missing && return processexpr( missing, isterm )
+  string( vname, isterm |> ts )
+end
+
 processexpr( vname::QuoteNode, isterm::Bool=false ) = processexpr( vname.value, isterm )
 
 
@@ -54,67 +61,49 @@ function processexpr( expr, isterm::Bool=false )
 end
 
 
+function processrecipe( recipe, args )
+  @inbounds arglist = recipe[2:end]
+  numargs = filter( arg -> arg isa Signed, arglist )
+  rind = isempty(numargs) ? 0 : max( 0, filter( arg -> arg isa Signed, arglist ) |> maximum ) + 1
+  @inbounds arglist = vcat( map( arglist ) do aind
+    aind isa Signed || return aind
+    aind > 0 && return @inbounds args[aind]
+    @inbounds arg = args[rind:end]
+    aind == -1 && return arg
+    [arg]
+  end... )
+  recipe[1](arglist...)
+end
+
+
 function procexpr( expr::Expr )
-  expr.head ∈ [:call, :macrocall] && return @inbounds processcall( expr.args[1], expr.args[2:end] )
-  expr.head ∈ ASSIGN_OPERATORS && return processassign( expr.head, expr.args... )
-  expr.head === :const && return processdec( Symbol("@const"), expr.args... )
-  expr.head === :kw && return processkwarg(expr.args...)
-  expr.head ∈ [:if, :elseif] && return processifelse(expr.args...)
-  expr.head ∈ LOGIC_OPERATORS && return processoperator( expr.head, expr.args )
-  expr.head === :function && return processfunction(expr.args...)
-  expr.head === :(::) && return @inbounds processexpr(expr.args[1])
-  expr.head === :block && return processblock(expr.args)
-  expr.head === :return && return @inbounds processreturn(expr.args[1])
-  expr.head === :. && return processpoint(expr.args...)
-  expr.head === :ref && return processref(expr.args...)
-  expr.head === :string && return processstring(expr.args)
-  expr.head === :vect && return processvector(expr.args)
-  expr.head ∈ [:break, :continue] && return string(expr.head)
-  expr.head === :for && return processfor(expr.args...)
-  expr.head === :while && return processwhile(expr.args...)
-  expr.head === :try && return processtry(expr.args...)
-  expr.head === :-> && return processanonfunction(expr.args...)
-  expr.head === :tuple && return processtuple(expr.args)
-  
+  haskey( JEXPRS, expr.head ) && return processrecipe( JEXPRS[expr.head], expr.args )
+
   println( expr, "   (", typeof(expr), ")" )
   display( expr.head )
   println( expr.args, "   (", typeof(expr.args), ")" )
 end
 
 
-function processcall( fcall, fargs::Vector )
-  filter!( arg -> !(arg isa LineNumberNode), fargs )
-  
-  fcall === Symbol("@output") && return processoutput(fargs...)
-  fcall === Symbol("@new") && return processnew(fargs...)
-  fcall ∈ [Symbol("@var"), Symbol("@let"), Symbol("@const")] && return processdec( fcall, fargs... )
-  fcall === Symbol("@template") && return processtemplate(fargs...)
-  fcall === Symbol("@r_str") && return processregex(fargs...)
-  fcall === Symbol("@usestrict") && return "'use strict'"
-  fcall === Symbol("@timeout") && return processtimeout(fargs...)
-  fcall === Symbol("@promise") && return processpromise(fargs...)
-  fcall === Symbol("@DOM") && return processdomcall(fargs...)
-  fcall === Symbol("@async") && return processasync(fargs...)
-  fcall === Symbol("@await") && return processawait(fargs...)
-  fcall === Symbol("@AJAX") && return processajaxcall(fargs...)
-
-  fcall === :output && return processoutput(fargs...)
-  fcall === :Dict && return processdict(fargs)
-  fcall === :(=>) && return processpair(fargs...)
-  fcall ∈ OPERATORS && return processoperator( fcall, fargs )
-  fcall === :string && return processoperator( :+, fargs )
-  fcall === :typeof && return processtypeof(fargs...)
+function processfuncall( fcall, fargs::Vector )
+  haskey( FCALLS, fcall ) && return processrecipe( FCALLS[fcall], fargs )
+  # length must be treat separately because of the difference in syntax between Julia and JavaScript.
   fcall === :length && return @inbounds processexpr( :($(fargs[1]).length) )
-  fcall === :sort && return processsort(fargs...)
-  fcall === :foreach && return @inbounds processforeach( fargs[2], fargs[1] )
-  fcall === :push! && return @inbounds processpush( fargs[1], fargs[2] )
-  fcall ∈ MATHFUNCS && return processfcall( :(Math.$fcall), fargs... )
-  fcall === :rand && return processrand(fargs...)
-  fcall === :throw && return processthrow(fargs...)
-  fcall === :|> && return processthen(fargs...)
-  fcall === :(:) && return processrange(fargs...)
+  
+  processfcall( fcall, fargs... )
+end
+
+
+function processmacro( fcall, fargs::Vector )
+  haskey( MACROCALLS, fcall ) && return processrecipe( MACROCALLS[fcall], fargs )
 
   processfcall( fcall, fargs... )
+end
+
+
+function processcall( fcall, fargs::Vector, ismacro::Bool )
+  filter!( arg -> !(arg isa LineNumberNode), fargs )
+  ismacro ? processmacro( fcall, fargs ) : processfuncall( fcall, fargs )
 end
 
 
@@ -128,7 +117,15 @@ processoutput( outtype::QuoteNode, args... ) =
 
 
 function processdict( entries::Vector )
-  entstr = vcat( processexpr.(entries)... )
+  isempty(entries) && return "{}"
+
+  entstr = map( processexpr.(entries) ) do estr
+    estr isa String && return string( estr, ',' )
+    @inbounds estr[end] = string( estr[end], ',' )
+    estr
+  end
+
+  entstr = vcat( entstr... )
   @inbounds entstr[end] = entstr[end][1:end-1]
   vcat( "{", string.( "  ", entstr ), "}" )
 end
@@ -136,9 +133,8 @@ end
 
 function processpair( first::AbstractString, second )
   secstr = processexpr(second)
-  secstr isa Vector || return string( first, ": ", secstr, ',' )
+  secstr isa Vector || return string( first, ": ", secstr )
   @inbounds secstr[1] = string( first, ": {" )
-  @inbounds secstr[end] = string( secstr[end], ',' )
   secstr
 end
 
@@ -457,6 +453,8 @@ function processforrange( rvar )
     rexpr = @inbounds processforrange( :(0:length($(rng.args[2]))).args, lvar )
   elseif rng.head === :call && @inbounds rng.args[1] === :keys
     @inbounds rexpr = string( "let ", lvar, " in ", rng.args[2] )
+  else
+    rexpr = string( "let ", lvar, " of ", rng )
   end
 
   "($rexpr)"
@@ -541,5 +539,15 @@ end
 processrange( sval::Number, eval::Number ) = processrange( sval, 1, eval )
 processrange( sval, step, eval ) = processfcall( :(:), sval, step, eval )
 processrange( sval, eval ) = processfcall( :(:), sval, eval )
+
+
+function processdollar(expr)
+  expstr = processexpr(expr)
+  expstr isa String && return string( '$', expstr )
+  @inbounds expstr[1] = string( '$', expstr[1] )
+  expstr
+end
+
+include("jsrecipes.jl")
 
 end
