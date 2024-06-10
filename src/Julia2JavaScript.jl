@@ -134,7 +134,7 @@ end
 function processpair( first::AbstractString, second )
   secstr = processexpr(second)
   secstr isa Vector || return string( first, ": ", secstr )
-  @inbounds secstr[1] = string( first, ": {" )
+  @inbounds secstr[1] = string( first, ": ", secstr[1] )
   secstr
 end
 
@@ -271,6 +271,9 @@ processtypeof( expr ) = string( "typeof ", processarg(expr) )
 
 function processfunction( fcall::Expr, fbody )
   fcallstr = processfname(fcall)
+  lexprn = findlast( fexpr -> !(fexpr isa LineNumberNode), fbody.args )
+  @inbounds lexpr = fbody.args[lexprn]
+  lexpr.head === :return || (@inbounds fbody.args[lexprn] = Expr(:return, lexpr))
   fbodystr = processexpr(fbody)
   @inbounds fbodystr[1] = string( fcallstr, " {" )
   fbodystr
@@ -291,7 +294,12 @@ function processblock( blines::Vector )
 end
 
 
-processreturn( expr ) = string( "return ", processexpr(expr) )
+function processreturn( expr )
+  rexpr = processexpr(expr)
+  rexpr isa Vector || return string( "return ", expr )
+  @inbounds rexpr[1] = string( "return ", rexpr[1] )
+  rexpr
+end
 
 
 function processpoint( vname, comp )
@@ -517,6 +525,8 @@ processthrow( expr ) = string( "throw ", processexpr(expr) )
 
 function processanonfunction( fvars, fbody )
   vstr = processexpr(fvars)
+  @inbounds lexpr = fbody.args[lexprn]
+  lexpr.head === :return || (@inbounds fbody.args[lexprn] = Expr(:return, lexpr))
   bstr = processexpr(fbody)
   @inbounds bstr[1] = string( vstr, " => {" )
   bstr
