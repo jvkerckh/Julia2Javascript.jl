@@ -50,7 +50,7 @@ processexpr( vname::QuoteNode, isterm::Bool=false ) = processexpr( vname.value, 
 
 function processexpr( expr, isterm::Bool=false )
   expstr = procexpr(expr)
-  expstr isa Nothing && return
+  isnothing(expstr) && return
   @inbounds expstr[end] == "}" && (isterm = false)
   # expr.head ∈ [:block, :function, :if, :elseif, :for] && (isterm = false)
 
@@ -252,7 +252,7 @@ function processifelse( cond, ifexpr, elexpr=nothing )
   condstr = processexpr(cond)
   exprstr = processexpr(ifexpr)
   elstr = ""
-  elexpr isa Nothing || (elstr = processexpr(elexpr) )
+  isnothing(elexpr) || (elstr = processexpr(elexpr) )
   !(isblockexpr(ifexpr) || isblockexpr(elexpr)) &&
     return string( condstr, " ? ", exprstr, " : ", elstr )
   condstr isa String || (@inbounds condstr = strip(condstr[2][1:end-1]))
@@ -271,9 +271,6 @@ processtypeof( expr ) = string( "typeof ", processarg(expr) )
 
 function processfunction( fcall::Expr, fbody )
   fcallstr = processfname(fcall)
-  lexprn = findlast( fexpr -> !(fexpr isa LineNumberNode), fbody.args )
-  @inbounds lexpr = fbody.args[lexprn]
-  lexpr.head === :return || (@inbounds fbody.args[lexprn] = Expr(:return, lexpr))
   fbodystr = processexpr(fbody)
   @inbounds fbodystr[1] = string( fcallstr, " {" )
   fbodystr
@@ -295,6 +292,7 @@ end
 
 
 function processreturn( expr )
+  isnothing(expr) && return "return"
   rexpr = processexpr(expr)
   rexpr isa Vector || return string( "return ", expr )
   @inbounds rexpr[1] = string( "return ", rexpr[1] )
@@ -525,8 +523,6 @@ processthrow( expr ) = string( "throw ", processexpr(expr) )
 
 function processanonfunction( fvars, fbody )
   vstr = processexpr(fvars)
-  @inbounds lexpr = fbody.args[lexprn]
-  lexpr.head === :return || (@inbounds fbody.args[lexprn] = Expr(:return, lexpr))
   bstr = processexpr(fbody)
   @inbounds bstr[1] = string( vstr, " => {" )
   bstr
