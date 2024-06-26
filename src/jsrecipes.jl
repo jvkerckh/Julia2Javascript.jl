@@ -23,6 +23,9 @@ begin
     :-> => (processanonfunction, -1),
     :tuple => (processtuple, -2),
     :$ => (processdollar, -1),
+    :export => (processexport, -2),
+    :import => (processimport, -2),
+    :(:) => (processcolon, 1, -2),
   )
 
   for aop in ASSIGN_OPERATORS
@@ -74,6 +77,10 @@ begin
     Symbol("@async") => (processasync, -1),
     Symbol("@await") => (processawait, -1),
     Symbol("@AJAX") => (processajaxcall, -1),
+    Symbol("@import") => (processimport, 1, -2),
+    Symbol("@default") => (processimparg, 1),
+    Symbol("@namespace") => (processimparg, "*", 1),
+    Symbol("@as") => (processimparg, 1, 2),
   )
 
   for dec in [Symbol("@var"), Symbol("@let"), Symbol("@const")]

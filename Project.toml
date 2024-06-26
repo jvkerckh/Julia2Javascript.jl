@@ -1,7 +1,7 @@
 name = "Julia2JavaScript"
 uuid = "51768943-751d-4fe6-994e-031722602a2c"
 authors = ["Johan Van Kerckhoven <johan.vankerckhoven@gmail.com> and contributors"]
-version = "1.1.2"
+version = "1.2.0"
 
 [compat]
 julia = "1"

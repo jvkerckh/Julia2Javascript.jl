@@ -28,7 +28,7 @@ processexpr( num::Unsigned, isterm::Bool=false ) =
   string( "0x", string( num, base=16 ) |> uppercase, isterm |> ts )
 processexpr( str::AbstractString, isterm::Bool=false ) =
   string( "'", str, "'", isterm |> ts )
-processexpr( chr::Char, isterm::Bool=false ) = processexpr( chr |> str, isterm )
+processexpr( chr::Char, isterm::Bool=false ) = processexpr( chr |> string, isterm )
 processexpr( num::BigInt, isterm::Bool=false ) =
   string( num, 'n', isterm |> ts )
 processexpr( ::Irrational{:π}, isterm::Bool=false ) =
@@ -95,6 +95,7 @@ end
 
 
 function processmacro( fcall, fargs::Vector )
+  fcall isa GlobalRef && @inbounds return processcmd(fargs[1])
   haskey( MACROCALLS, fcall ) && return processrecipe( MACROCALLS[fcall], fargs )
 
   processfcall( fcall, fargs... )
@@ -253,8 +254,9 @@ function processifelse( cond, ifexpr, elexpr=nothing )
   exprstr = processexpr(ifexpr)
   elstr = ""
   isnothing(elexpr) || (elstr = processexpr(elexpr) )
-  !(isblockexpr(ifexpr) || isblockexpr(elexpr)) &&
+  isblockexpr(ifexpr) || isblockexpr(elexpr) ||
     return string( condstr, " ? ", exprstr, " : ", elstr )
+
   condstr isa String || (@inbounds condstr = strip(condstr[2][1:end-1]))
   @inbounds exprstr[1] = string( "if (", condstr, ") {" )
   isempty(elstr) && return exprstr
@@ -294,11 +296,13 @@ end
 function processreturn( expr )
   isnothing(expr) && return "return"
   rexpr = processexpr(expr)
-  rexpr isa Vector || return string( "return ", expr )
+  rexpr isa Vector || return string( "return ", rexpr )
   @inbounds rexpr[1] = string( "return ", rexpr[1] )
   rexpr
 end
 
+
+processpoint( vname ) = processexpr(string(vname))
 
 function processpoint( vname, comp )
   vexpr = processexpr(vname)
@@ -547,12 +551,72 @@ processrange( sval, step, eval ) = processfcall( :(:), sval, step, eval )
 processrange( sval, eval ) = processfcall( :(:), sval, eval )
 
 
-function processdollar(expr)
+function processdollar( expr )
   expstr = processexpr(expr)
   expstr isa String && return string( '$', expstr )
   @inbounds expstr[1] = string( '$', expstr[1] )
   expstr
 end
+
+
+processcmd( expr ) = "`$expr`"
+
+processexport( expr ) = string( "export { ", join( processexpr.(expr), ", " ), " }" )
+
+
+# processimport( expr ) = string( "import ", processexpr(expr), ";" )
+
+# function processimport( expr, isregular::Bool )
+#   if isregular
+#     expstr = processimport.(expr)
+#     @inbounds expstr[end] = expstr[end][1:end-1]
+#     return expstr
+#   end
+
+#   "[import placeholder]"
+# end
+
+
+processimport( expr ) = string( "import ", processexpr(expr), ";" )
+
+function processimport( expr::Vector )
+  expstr = processimport.(expr)
+  @inbounds expstr[end] = expstr[end][1:end-1]
+  expstr
+end
+
+function processimport( mexpr, exprs )
+  @assert all( exprs ) do expr
+    expr isa Symbol && return true
+    expr isa Expr && expr.head === :macrocall && (@inbounds expr.args[1] ∈ VALID_IMPORTS)
+  end "Variable arguments must be of type Symbol or macrocalls with @as, @default, or @namespace"
+
+  mstr = processexpr(string(mexpr))
+  isempty(exprs) && return "import $mstr"
+
+  # Group all variable imports
+  issymb = map( exprs ) do expr
+    expr isa Symbol || (@inbounds expr.args[1] === Symbol("@as"))
+  end
+
+  sinds = findall(issymb)
+  nsinds = findall(.!issymb)
+
+  # Generate JS expression
+  expstr = processexpr.(exprs)
+  @inbounds sexpstr = isempty(sinds) ? "" : string( "{ ", join( expstr[sinds], ", " ), " }" )
+  @inbounds nsexpstr = join( expstr[nsinds], ", " )
+  string( "import ", join( [nsexpstr, sexpstr], isempty(nsexpstr) || isempty(sexpstr) ? "" : ", " ), " from ", mstr )
+end
+
+
+processcolon( mexpr, vexpr ) = string( "{ ", join( processexpr.(vexpr), ", " ), " } from ", processexpr(mexpr) )
+
+
+processimparg( expr ) = processexpr(expr)
+processimparg( ::AbstractString, expr ) = string( "* as ", processexpr(expr) )
+processimparg( vexpr, nexpr ) = string( processexpr(vexpr), " as ", processexpr(nexpr) )
+
 
 include("jsrecipes.jl")
 
