@@ -524,7 +524,7 @@ end
 
 function processthrow( expr )
   expstr = processexpr(expr)
-  @inbounds expstr[1] = string( "throw ", exppstr[1] )
+  @inbounds expstr[1] = string( "throw ", expstr[1] )
   expstr
 end
 
