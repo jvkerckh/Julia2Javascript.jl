@@ -522,7 +522,11 @@ function processtry( texpr::Expr, evar, cexpr, fexpr::Expr )
 end
 
 
-processthrow( expr ) = string( "throw ", processexpr(expr) )
+function processthrow( expr )
+  expstr = processexpr(expr)
+  @inbounds expstr[1] = string( "throw ", exppstr[1] )
+  expstr
+end
 
 
 function processanonfunction( fvars, fbody )
