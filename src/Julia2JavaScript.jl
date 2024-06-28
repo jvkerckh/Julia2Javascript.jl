@@ -565,20 +565,26 @@ end
 
 processcmd( expr ) = "`$expr`"
 
-processexport( expr ) = string( "export { ", join( processexpr.(expr), ", " ), " }" )
 
+function processexport( exprs::Vector, juliaexport::Bool )
+  juliaexport &&
+    return string( "export { ", join( processexpr.(exprs), ", " ), " }" )
 
-# processimport( expr ) = string( "import ", processexpr(expr), ";" )
+  @assert all( exprs ) do expr
+    expr isa Symbol && return true
+    expr isa Expr && expr.head === :macrocall && (@inbounds expr.args[1] === Symbol("@as"))
+  end "Variable arguments must be of type Symbol or macrocalls with @as, @default, or @namespace"
+  
+  string( "export { ", join( processexpr.(exprs), ", " ), " }" )
+end
 
-# function processimport( expr, isregular::Bool )
-#   if isregular
-#     expstr = processimport.(expr)
-#     @inbounds expstr[end] = expstr[end][1:end-1]
-#     return expstr
-#   end
-
-#   "[import placeholder]"
-# end
+function processexport( isdefault::Bool, expr )
+  expstr = processexpr(expr)
+  prefix = string( "export ", isdefault ? "default " : "" )
+  expstr isa Vector || return "$prefix$expstr"
+  @inbounds expstr[1] = string( prefix, expstr[1] )
+  expstr
+end
 
 
 processimport( expr ) = string( "import ", processexpr(expr), ";" )

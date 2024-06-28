@@ -23,7 +23,7 @@ begin
     :-> => (processanonfunction, -1),
     :tuple => (processtuple, -2),
     :$ => (processdollar, -1),
-    :export => (processexport, -2),
+    :export => (processexport, -2, true),
     :import => (processimport, -2),
     :(:) => (processcolon, 1, -2),
   )
@@ -77,6 +77,8 @@ begin
     Symbol("@async") => (processasync, -1),
     Symbol("@await") => (processawait, -1),
     Symbol("@AJAX") => (processajaxcall, -1),
+    Symbol("@export") => (processexport, -2, false),
+    Symbol("@dexport") => (processexport, 1, 2),
     Symbol("@import") => (processimport, 1, -2),
     Symbol("@default") => (processimparg, 1),
     Symbol("@namespace") => (processimparg, "*", 1),
