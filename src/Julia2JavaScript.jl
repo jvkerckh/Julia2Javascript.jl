@@ -254,8 +254,30 @@ function processifelse( cond, ifexpr, elexpr=nothing )
   exprstr = processexpr(ifexpr)
   elstr = ""
   isnothing(elexpr) || (elstr = processexpr(elexpr) )
-  isblockexpr(ifexpr) || isblockexpr(elexpr) ||
-    return string( condstr, " ? ", exprstr, " : ", elstr )
+
+  if !(isblockexpr(ifexpr) || isblockexpr(elexpr))
+    @inbounds condll = condstr isa String ? "($condstr) ? (" : string( condstr[end], ") ? (" )
+    @inbounds elfl = elstr isa String ? ") : ($elstr)" : string( ") : (", elstr[1] )
+
+    if exprstr isa String
+      exprstr = "$condll$exprstr$elfl"
+    else
+      @inbounds exprstr[1] = string( condll, exprstr[1] )
+      @inbounds exprstr[end] = string( exprstr[end], elfl )
+    end
+
+    if condstr isa Vector
+      @inbounds condstr[1] = string( "(", condstr[1] )
+      @inbounds exprstr = vcat( condstr[1:end-1], exprstr )
+    end
+
+    if elstr isa Vector
+      @inbounds elstr[end] = string( elstr[end], ")" )
+      @inbounds append!( exprstr, elstr[2:end] )
+    end
+
+    return exprstr
+  end
 
   condstr isa String || (@inbounds condstr = strip(condstr[2][1:end-1]))
   @inbounds exprstr[1] = string( "if (", condstr, ") {" )
@@ -532,6 +554,13 @@ end
 function processanonfunction( fvars, fbody )
   vstr = processexpr(fvars)
   bstr = processexpr(fbody)
+
+  if count( expr -> !(expr isa LineNumberNode), fbody.args ) == 1
+    @inbounds bstr[2] = string( vstr, " => ", bstr[2][3:end] )
+    @inbounds bstr[end-1][end] == ';' && (bstr[end-1] = bstr[end-1][1:end-1])
+    @inbounds return length(bstr) == 3 ? bstr[2] : bstr[2:end-1]
+  end
+
   @inbounds bstr[1] = string( vstr, " => {" )
   bstr
 end
